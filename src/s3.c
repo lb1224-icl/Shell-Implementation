@@ -54,7 +54,7 @@ void child(char *args[], int argsc)
 
 void launch_program(char *args[], int argsc)
 {
-    ///Implement this function:
+    ///Implement this function
 
     ///fork() a child process.
     ///In the child part of the code,
