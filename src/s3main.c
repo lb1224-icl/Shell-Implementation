@@ -21,7 +21,5 @@ int main(int argc, char *argv[]){
 
         reap();
     }
-
-    return 0;
-    
+    return 0;    
 }
