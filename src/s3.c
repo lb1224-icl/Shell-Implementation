@@ -65,15 +65,26 @@ void launch_program(char *args[], int argsc)
     ///Handle the 'exit' command;
     ///so that the shell, not the child process,
     ///exits.
-    int rc = fork();
-    if (rc<0){
-        exit(1);
-    }
-    else if (rc==0){
-        child(args, argsc);
-    }
-    else {
-        wait (NULL);
+
+
+    if (strcmp(args[ARG_PROGNAME], "exit") == 0) {
+        int status = 0;
+        if (argsc > 1) {
+            status = atoi(args[1]); // 0 if there is an error (aka exit <not an int>)
+        }
+        printf("Exiting shell with status %d\n", status);
+        exit(status);
     }
 
+    pid_t rc = fork();
+
+    if (rc < 0) {
+        perror("fork failed");
+        exit(1);
+    } else if (rc == 0) {
+        child(args, argsc);
+        exit(1);
+    } else {
+        wait(NULL);
+    }
 }
