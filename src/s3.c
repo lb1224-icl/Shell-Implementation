@@ -33,23 +33,14 @@ void parse_command(char line[], char *args[], int *argsc) {
 }
 
 bool command_with_redirection(const char *line) {
-    if (strstr(line, "<")) {
-        return true;
-    }
-    if (strstr(line, ">")) {
-        return true;
-    }
-    if (strstr(line, "2>")) {
-        return true;
-    }
-    return false;
+    return strstr(line, "<") || strstr(line, ">");
 }
 
 static int extract_redirections(char *args[], int argsc,
                                 char *exec_args[], int *exec_argc,
                                 Redirections *r) {
     memset(r, 0, sizeof(*r));
-    *exec_argc = 0;
+    *exec_argc = 0; //new args without ">" and so on
 
     for (int i = 0; i < argsc; i++) {
         if (strcmp(args[i], "<") == 0) {
@@ -57,21 +48,21 @@ static int extract_redirections(char *args[], int argsc,
                 fprintf(stderr, "s3: syntax error near '<'\n");
                 return -1;
             }
-            r->in_path = args[++i];
+            r->in_path = args[++i]; // next argument is in path
         } else if (strcmp(args[i], ">") == 0 || strcmp(args[i], ">>") == 0) {
             if (i + 1 >= argsc) {
                 fprintf(stderr, "s3: syntax error near '>'\n");
                 return -1;
             }
-            r->out_append = (args[i][1] == '>');
-            r->out_path = args[++i];
+            r->out_append = (args[i][1] == '>'); // check if ">>"
+            r->out_path = args[++i]; // next argument is out path
         } else if (strcmp(args[i], "2>") == 0 || strcmp(args[i], "2>>") == 0) {
             if (i + 1 >= argsc) {
                 fprintf(stderr, "s3: syntax error near '2>'\n");
                 return -1;
             }
-            r->err_append = (args[i][2] == '>');
-            r->err_path = args[++i];
+            r->err_append = (args[i][2] == '>'); // check if "2>>"
+            r->err_path = args[++i]; // next argument is out path
             r->merge_err_to_out = false;
         } else if (strcmp(args[i], "2>&1") == 0) {
             r->merge_err_to_out = true;
@@ -86,7 +77,7 @@ static int extract_redirections(char *args[], int argsc,
             r->out_path = NULL;
             r->err_path = NULL;
         } else {
-            exec_args[(*exec_argc)++] = args[i];
+            exec_args[(*exec_argc)++] = args[i]; // if not a redirect, add to exec_args
         }
     }
 
@@ -115,7 +106,7 @@ int validate_redirs(const Redirections *r) {
     }
 
     if (r->in_path) {
-        if (access(r->in_path, F_OK) != 0) {
+        if (access(r->in_path, F_OK) != 0) { // check if in path exists
             perror(r->in_path);
             return -1;
         }
@@ -147,7 +138,7 @@ int open_redirection_fds(const Redirections *r, int fds[3]) {
             return -1;
         }
         fds[1] = fd;
-        fds[2] = dup(fd);
+        fds[2] = dup(fd); // differen fd for same file (so not affected by eachother)
         if (fds[2] < 0) {
             perror("dup");
             close(fd);
@@ -180,9 +171,9 @@ int open_redirection_fds(const Redirections *r, int fds[3]) {
 }
 
 void apply_redirections(const Redirections *r, int fds[3]) {
-    if (fds[0] >= 0 && dup2(fds[0], STDIN_FILENO) < 0) {
+    if (fds[0] >= 0 && dup2(fds[0], STDIN_FILENO) < 0) { // dup2 returns -1 if it fails
         perror("dup2 stdin");
-        _exit(1);
+        _exit(1); // _exit is the exit for children, doesnt waste time cleaning up buffers, wait() in parent will deal with it
     }
 
     if (fds[1] >= 0 && dup2(fds[1], STDOUT_FILENO) < 0) {
@@ -191,7 +182,7 @@ void apply_redirections(const Redirections *r, int fds[3]) {
     }
 
     if (r->merge_err_to_out) {
-        if (dup2(STDOUT_FILENO, STDERR_FILENO) < 0) {
+        if (dup2(STDOUT_FILENO, STDERR_FILENO) < 0) { // same fd if we use 2>&1
             perror("dup2 2>&1");
             _exit(1);
         }
@@ -200,13 +191,15 @@ void apply_redirections(const Redirections *r, int fds[3]) {
         _exit(1);
     }
 
-    if (fds[0] >= 0) close(fds[0]);
-    if (fds[1] >= 0) close(fds[1]);
+    if (fds[0] >= 0) close(fds[0]); // close all fds when we no longer need them
+    if (fds[1] >= 0) close(fds[1]); // saves space in file descriptor table
     if (fds[2] >= 0) close(fds[2]);
 }
 
 void child(char *args[], int argsc) {
-    execvp(args[ARG_PROGNAME], args);
+    execvp(args[ARG_PROGNAME], args); // change child with requested program
+    
+    //following only ran if execvp goes wrong
     perror(args[ARG_PROGNAME]);
     _exit(127);
 }
@@ -220,6 +213,8 @@ void child_exec_with_redirs(char *args[], int argsc, const Redirections *r) {
 
     apply_redirections(r, fds);
     execvp(args[ARG_PROGNAME], args);
+
+    //following only ran if execvp goes wrong
     perror(args[ARG_PROGNAME]);
     _exit(127);
 }
@@ -280,6 +275,6 @@ void launch_program_with_redirection(char *args[], int argsc) {
     }
 
     if (rc == 0) {
-        child_exec_with_redirs(exec_args, exec_argc, &r);
+        child_exec_with_redirs(exec_args, exec_argc, &r); // change exec of child
     }
 }
