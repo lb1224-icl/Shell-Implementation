@@ -9,7 +9,6 @@ void read_command_line(char line[]) {
 
     construct_shell_prompt(shell_prompt);
     printf("%s", shell_prompt);
-    fflush(stdout);
 
     if (fgets(line, MAX_LINE, stdin) == NULL) {
         perror("fgets failed");
@@ -18,9 +17,7 @@ void read_command_line(char line[]) {
 
     size_t len = strlen(line);
 
-    if (len > 0 && line[len - 1] == '\n') {
-        line[len - 1] = '\0';
-    }
+    line[len - 1] = '\0';
 }
 
 void parse_command(char line[], char *args[], int *argsc) {
