@@ -16,49 +16,41 @@
 #define MAX_ARGS 128
 #define MAX_PROMPT_LEN 256
 
-enum ArgIndex
-{
+enum ArgIndex {
     ARG_PROGNAME,
     ARG_1,
     ARG_2,
     ARG_3,
 };
 
-static inline void reap()
-{
+typedef struct Redirections {
+    char *in_path;
+    char *out_path;
+    char *err_path;
+    char *both_path;
+    bool out_append;
+    bool err_append;
+    bool merge_err_to_out;
+    bool both_to_path;
+} Redirections;
+
+static inline void reap(void) {
     wait(NULL);
 }
 
-typedef struct Redirections
-{
-    char *in_path;         // < file
-    char *out_path;        // > or >>
-    char *err_path;        // 2> or 2>>
-    char *both_path;       // &> file
-
-    bool out_append;       // >>
-    bool err_append;       // 2>>
-    bool merge_err_to_out; // 2>&1
-    bool both_to_path;     // &>
-} Redirections;
-
-/// Shell core
-void read_command_line(char line[]);
 void construct_shell_prompt(char shell_prompt[]);
+void read_command_line(char line[]);
 void parse_command(char line[], char *args[], int *argsc);
-
-/// Redirection parsing + helpers
 bool command_with_redirection(const char *line);
-int parse_command_and_redirs(char line[], char *args[], int *argsc, Redirections *r);
-int open_redirection_fds(const Redirections *r, int fds[3]);
+
 int validate_redirs(const Redirections *r);
+int open_redirection_fds(const Redirections *r, int fds[3]);
+void apply_redirections(const Redirections *r, int fds[3]);
 
-/// Child execution
-void child_exec_no_redirs(char *args[], int argsc);
 void child_exec_with_redirs(char *args[], int argsc, const Redirections *r);
+void child(char *args[], int argsc);
 
-/// Launching
 void launch_program(char *args[], int argsc);
-void launch_program_with_redirection(char *args[], int argsc, const Redirections *r);
+void launch_program_with_redirection(char *args[], int argsc);
 
 #endif
