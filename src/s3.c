@@ -1,7 +1,74 @@
 #include "s3.h"
+#include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 
-void construct_shell_prompt(char shell_prompt[]) {
-    strcpy(shell_prompt, "[s3]$ ");
+
+void construct_shell_prompt(char shell_prompt[], int argsc, char *args[] ) {
+    char cwd[MAX_PROMPT_LEN - 6];
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        perror("getcwd");
+        // If getcwd fails, fall back to default prompt
+        strcpy(shell_prompt, "[s3]$ ");
+        return;
+    }
+
+    snprintf(shell_prompt, MAX_PROMPT_LEN, "[%s s3]$ ", cwd);
+}
+
+void init_lwd(char lwd[]) {
+    if (getcwd(lwd, MAX_PROMPT_LEN - 6) == NULL) {
+        perror("getcwd");
+        exit(EXIT_FAILURE);
+    }
+}
+
+bool is_cd(char line[]) {
+    // Returns true if the command starts with "cd"
+    return strncmp(line, "cd", 2) == 0;
+}
+
+void run_cd(char *args[], int argsc, char lwd[]) {
+    char cwd[MAX_PROMPT_LEN - 6];  
+    char temp[MAX_PROMPT_LEN - 6]; 
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        perror("getcwd");
+        return;
+    }
+
+    if (argsc == 1) {
+        const char *home = getenv("HOME");
+        if (home == NULL) {
+            fprintf(stderr, "cd: HOME not set\n");
+            return;
+        }
+        if (chdir(home) != 0) {
+            perror("cd");
+        } else {
+            strcpy(lwd, cwd); 
+        }
+    
+    }
+    else if (strcmp(args[1], "-") == 0) {
+        strcpy(temp, cwd); 
+        if (chdir(lwd) != 0) {
+            perror("cd");
+        } else {
+            printf("%s\n", lwd);
+            strcpy(lwd, temp); 
+        }
+    } 
+    else {
+        strcpy(temp, cwd); 
+        if (chdir(args[1]) != 0) {
+            perror("cd");
+        } else {
+            strcpy(lwd, temp); 
+        }
+    }
 }
 
 void read_command_line(char line[]) {
@@ -278,3 +345,4 @@ void launch_program_with_redirection(char *args[], int argsc) {
         child_exec_with_redirs(exec_args, exec_argc, &r); // change exec of child
     }
 }
+
