@@ -15,6 +15,7 @@
 #define MAX_LINE 1024
 #define MAX_ARGS 128
 #define MAX_PROMPT_LEN 256
+#define MAX_CMDS 128
 
 enum ArgIndex {
     ARG_PROGNAME,
@@ -40,6 +41,13 @@ static inline void reap(void) {
 
 void construct_shell_prompt(char shell_prompt[]);
 void read_command_line(char line[]);
+void trim_whitespace(char *str);
+
+int split_by_semicolon(char line[], char *commands[]);
+int is_subshell(char *cmd);
+
+void run_subshell(char *cmd, char *shell_path);
+
 void parse_command(char line[], char *args[], int *argsc);
 bool command_with_redirection(const char *line);
 

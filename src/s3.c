@@ -1,4 +1,5 @@
 #include "s3.h"
+#include "ctype.h"
 
 void construct_shell_prompt(char shell_prompt[]) {
     strcpy(shell_prompt, "[s3]$ ");
@@ -18,6 +19,125 @@ void read_command_line(char line[]) {
     size_t len = strlen(line);
 
     line[len - 1] = '\0';
+}
+
+void trim_whitespace(char *str) {
+    if (str == NULL) return;
+
+    char *src = str;
+    char *dst = str;
+    int in_quote = 0;
+    char quote_char = '\0';
+
+    // Skip initial spaces
+    while (isspace((unsigned char)*src)) src++;
+
+    while (*src) {
+        if (*src == '"' || *src == '\'') {
+            if (in_quote && *src == quote_char) {
+                in_quote = 0; // end quote
+            } else if (!in_quote) {
+                in_quote = 1; // start quote
+                quote_char = *src;
+            }
+            *dst++ = *src++;
+        } else if (!in_quote && isspace((unsigned char)*src)) {
+            // Collapse multiple spaces to one
+            *dst++ = ' ';
+            while (isspace((unsigned char)*(++src)));
+        } else {
+            *dst++ = *src++;
+        }
+    }
+
+    // Remove trailing space
+    if (dst > str && isspace((unsigned char)*(dst - 1))) dst--;
+    *dst = '\0';
+}
+
+int split_by_semicolon(char line[], char *commands[]) {
+    int count = 0;
+    int depth = 0;
+    int in_quote = 0;
+    char quote_char = '\0'; // Stores which type of quote we are in
+    char *start = line;
+
+    for (char *p = line; ; p++) {
+        char c = *p;
+
+        if (c == '"' || c == '\'') {
+            if (in_quote && c == quote_char) {
+                in_quote = 0;
+                quote_char = '\0';
+            } else if (!in_quote) {
+                in_quote = 1;
+                quote_char = c;
+            }
+        } else if (!in_quote) {
+            if (c == '(') depth++;
+            else if (c == ')') {
+                if (depth > 0) depth--;
+                else {
+                    fprintf(stderr, "Syntax error: unmatched ')'\n");
+                    return 0;
+                }
+            } else if ((c == ';' && depth == 0) || c == '\0') {
+                if (p > start) {
+                    // Trim trailing spaces
+                    char *end = p - 1;
+                    while (end > start && isspace((unsigned char)*end)) end--;
+                    *(end + 1) = '\0';
+
+                    // Trim leading spaces
+                    while (start < end && isspace((unsigned char)*start)) start++;
+
+                    // Store all the start characters, then can iterate over each as its own line (as null terminated)
+                    if (*start != '\0')
+                        commands[count++] = start;
+                }
+
+                if (c == '\0' || count >= MAX_CMDS)
+                    break;
+
+                start = p + 1;
+            }
+        }
+
+        if (c == '\0')
+            break;
+    }
+
+    if (depth != 0) {
+        fprintf(stderr, "Syntax error: unmatched '('\n");
+        return 0;
+    }
+
+    return count;
+}
+
+int is_subshell(char *cmd){
+    // all checks for depth have been handled already
+    if (*cmd != '(') return 0;
+    else return 1;
+}
+
+void run_subshell(char *cmd, char *shell_path){
+    char *inner = cmd;
+    if (*inner == '(') inner++;
+    size_t len = strlen(inner);
+    if (len > 0 && inner[len - 1] == ')') inner[len - 1] = '\0';
+
+    pid_t pid = fork();
+    
+    if (pid == 0) {
+        execlp(shell_path, shell_path, "-c", inner, NULL);
+        perror("exec failed");
+        exit(1);
+    } else if (pid > 0) {
+        waitpid(pid, NULL, 0);
+    } else {
+        perror("fork failed");
+    }
 }
 
 void parse_command(char line[], char *args[], int *argsc) {
