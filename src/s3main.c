@@ -2,7 +2,6 @@
 
 int main(int argc, char *argv[]) {
     char line[MAX_LINE];
-    char line_copy[MAX_LINE];
     char *args[MAX_ARGS];
     int argsc;
 
@@ -13,16 +12,23 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        strcpy(line_copy, line);
+        char *commands[MAX_CMDS];
+        int num_cmds = split_by_semicolon(line, commands);
 
-        if (command_with_redirection(line_copy)) {
-            parse_command(line, args, &argsc);
-            launch_program_with_redirection(args, argsc);
-            reap();
-        } else {
-            parse_command(line, args, &argsc);
-            launch_program(args, argsc);
-            reap();
+        for (int i = 0; i < num_cmds; i++) {
+            // Optional: trim whitespace around commands[i]
+            char *cmd = trim(commands[i]);
+            if (strlen(cmd) == 0) continue;
+
+            if (command_with_redirection(cmd)) {
+                parse_command(cmd, args, &argsc);
+                launch_program_with_redirection(args, argsc);
+                reap();
+            } else {
+                parse_command(cmd, args, &argsc);
+                launch_program(args, argsc);
+                reap();
+            }
         }
     }
 

@@ -23,6 +23,15 @@ void read_command_line(char line[]) {
     }
 }
 
+int split_by_semicolon(char line[], char *commands[]) {
+    int count = 0;
+    char *token = strtok(line, ";");
+    while (token != NULL && count < MAX_CMDS) {
+        commands[count++] = token;
+        token = strtok(NULL, ";");
+    }
+    return count;
+}
 void parse_command(char line[], char *args[], int *argsc) {
     char *tok = strtok(line, " ");
     *argsc = 0;
