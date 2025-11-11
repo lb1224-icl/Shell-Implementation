@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
 
         for (int i = 0; i < num_cmds; i++) {
             // Optional: trim whitespace around commands[i]
-            char *cmd = trim(commands[i]);
+            char *cmd = commands[i];
             if (strlen(cmd) == 0) continue;
 
             if (command_with_redirection(cmd)) {
