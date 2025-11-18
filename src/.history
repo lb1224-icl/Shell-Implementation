@@ -1,0 +1,11 @@
+history
+ls l
+ls txt
+history
+ls l
+history
+history
+echo hi ; (echo inside) ; echo done
+history
+history
+git add .
