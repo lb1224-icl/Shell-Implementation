@@ -9,3 +9,9 @@ echo hi ; (echo inside) ; echo done
 history
 history
 git add .
+git commit -m "heya"
+git push
+git push origin lucca
+history
+echo hi ; (echo inside) ; echo done
+history

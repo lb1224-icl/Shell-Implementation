@@ -8,7 +8,6 @@ static void execute_command_line(char *line, char *shell_path) {
     if (strlen(line) == 0)
         return;
 
-    // --- HISTORY EXPANSION (only interactive shell) ---
     char expanded[MAX_LINE];
     if (interactive_shell) {
         int exp = history_expand(line, expanded);
@@ -19,13 +18,11 @@ static void execute_command_line(char *line, char *shell_path) {
         }
     }
 
-    // --- SAVE TO HISTORY (only interactive) ---
     if (interactive_shell) {
         history_add(line);
         history_save(line);
     }
 
-    // --- normal splitting and execution ---
     char *commands[MAX_CMDS];
     int num_cmds = split_by_semicolon(line, commands);
 
