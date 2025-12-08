@@ -48,8 +48,15 @@ void construct_shell_prompt(char shell_prompt[]) {
     snprintf(shell_prompt, MAX_PROMPT_LEN, "%s%s%s", prefix, cwd_display, suffix);
 }
 
+static char prev_directory[PATH_MAX] = "";
+
 int change_directory(const char *path) {
     const char *target = path;
+    char current_directory[PATH_MAX];
+
+    if (getcwd(current_directory, sizeof(current_directory)) == NULL) {
+        current_directory[0] = '\0';
+    }
 
     if (target == NULL || strlen(target) == 0) {
         target = getenv("HOME");
@@ -57,9 +64,39 @@ int change_directory(const char *path) {
             target = "/";
     }
 
+    char expanded_target[PATH_MAX];
+    if (target[0] == '~') {
+        const char *home = getenv("HOME");
+        if (!home) home = "/";
+        if (target[1] == '\0') {
+            strncpy(expanded_target, home, sizeof(expanded_target));
+            expanded_target[sizeof(expanded_target) - 1] = '\0';
+        } else if (target[1] == '/' ) {
+            snprintf(expanded_target, sizeof(expanded_target), "%s%s", home, target + 1); //target + 1 just means skip first element (linked list)
+        } else {
+            strncpy(expanded_target, target, sizeof(expanded_target));
+            expanded_target[sizeof(expanded_target) - 1] = '\0';
+        }
+        target = expanded_target;
+    }
+
+    if (strcmp(target, "-") == 0) {
+        if (prev_directory[0] == '\0') {
+            fprintf(stderr, "cd: OLDPWD not set\n");
+            return -1;
+        }
+        target = prev_directory;
+        printf("%s\n", target);
+    }
+
     if (chdir(target) != 0) {
         perror("cd");
         return -1;
+    }
+
+    if (current_directory[0] != '\0') {
+        strncpy(prev_directory, current_directory, sizeof(prev_directory));
+        prev_directory[sizeof(prev_directory) - 1] = '\0';
     }
 
     return 0;

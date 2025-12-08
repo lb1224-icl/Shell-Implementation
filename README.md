@@ -70,7 +70,7 @@ The shell persists command history in `.history` (created automatically) and use
 
 ### Shell Built-ins & Prompt
 
-- **`cd`** – Recognised upfront (`execute_command_line` calls `change_directory` in the parent). The prompt reflects the new directory immediately because `construct_shell_prompt` calls `getcwd` on each loop iteration. A missing argument defaults to `$HOME`.
+- **`cd`** – Recognised upfront (`execute_command_line` calls `change_directory` in the parent). Supports `cd .`, `cd ..`, `cd -` (jump back to previous directory), and tilde expansion (`cd ~`, `cd ~/path`). The prompt reflects the new directory immediately because `construct_shell_prompt` calls `getcwd` on each loop iteration. A missing argument defaults to `$HOME`.
 - **Prompt** – `[s3 <cwd>]$` truncated safely if the current path would exceed `MAX_PROMPT_LEN`.
 - **History CLI** – Typing `history` prints numbered entries. The subsystem (see `src/history.c`) loads `.history` on startup and appends after every user command.
 

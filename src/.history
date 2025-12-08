@@ -52,3 +52,9 @@ tr a-z A-Z < txt/phrases.txt | grep BURN | sort | wc -l
 ( cd src; tr a-z A-Z < txt/phrases.txt ) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
 cd..
 cd ..
+cd -
+pwd
+exit
+cd -
+pwd
+cd ..
