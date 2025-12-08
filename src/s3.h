@@ -46,7 +46,7 @@ static inline void reap(void) {
 }
 
 void construct_shell_prompt(char shell_prompt[]);
-int change_directory(const char *path);
+int change_directory(const char *path, bool allow_oldpwd);
 void quote_state_init(QuoteState *qs);
 void quote_state_consume(QuoteState *qs, char c);
 void read_command_line(char line[]);

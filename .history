@@ -100,3 +100,27 @@ cd ~/
 cd ~/
 cd /Documents
 cd ~/Documents
+pwd
+cd --
+cd -- ./src
+pwd
+exit
+pwd
+cd -- src
+pwd
+exit
+pwd
+cd -- src
+pwd
+cd ..
+pwd
+exit
+pwd
+cd ..
+pwd
+cd src
+pwd
+exit
+mkdir -p tmp/-logs
+cd -- tmp/-logs
+pwd

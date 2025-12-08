@@ -50,7 +50,7 @@ void construct_shell_prompt(char shell_prompt[]) {
 
 static char prev_directory[PATH_MAX] = "";
 
-int change_directory(const char *path) {
+int change_directory(const char *path, bool allow_oldpwd) {
     const char *target = path;
     char current_directory[PATH_MAX];
 
@@ -80,7 +80,7 @@ int change_directory(const char *path) {
         target = expanded_target;
     }
 
-    if (strcmp(target, "-") == 0) {
+    if (allow_oldpwd && strcmp(target, "-") == 0) {
         if (prev_directory[0] == '\0') {
             fprintf(stderr, "cd: OLDPWD not set\n");
             return -1;

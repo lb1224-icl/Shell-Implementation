@@ -45,11 +45,22 @@ static void execute_command_line(char *line, char *shell_path) {
 
         parse_command(cmd_copy, args, &argsc);
         if (argsc > 0 && strcmp(args[ARG_PROGNAME], "cd") == 0) {
-            if (argsc > 2) {
+            const char *target = NULL;
+            bool allow_oldpwd = true;
+            int start_index = 1;
+
+            if (argsc > 1 && strcmp(args[ARG_1], "--") == 0) {
+                start_index++;
+                allow_oldpwd = false;
+            }
+
+            if (argsc - start_index > 1) {
                 fprintf(stderr, "cd: too many arguments\n");
             } else {
-                const char *target = (argsc == 2) ? args[ARG_1] : NULL;
-                change_directory(target);
+                if (argsc - start_index == 1) {
+                    target = args[start_index];
+                }
+                change_directory(target, allow_oldpwd);
             }
             continue;
         }

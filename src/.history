@@ -58,3 +58,8 @@ exit
 cd -
 pwd
 cd ..
+pwd
+cd -- -tmp
+exit
+pwd
+cd -
