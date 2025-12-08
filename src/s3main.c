@@ -1,11 +1,15 @@
 #include "s3.h"
 #include "history.h"
+#include <limits.h>
 
 int interactive_shell = 1;
 
 static void execute_command_line(char *line, char *shell_path) {
     trim_whitespace(line);
     if (strlen(line) == 0)
+        return;
+
+    if (strcmp(line, "!") == 0)
         return;
 
     char expanded[MAX_LINE];
@@ -35,9 +39,18 @@ static void execute_command_line(char *line, char *shell_path) {
 
         if (strlen(cmd) == 0) continue;
 
-        // Built-in history (only in interactive shell)
-        if (interactive_shell && strcmp(cmd, "history") == 0) {
-            history_print();
+        char cmd_copy[MAX_LINE];
+        strncpy(cmd_copy, cmd, MAX_LINE);
+        cmd_copy[MAX_LINE - 1] = '\0';
+
+        parse_command(cmd_copy, args, &argsc);
+        if (argsc > 0 && strcmp(args[ARG_PROGNAME], "cd") == 0) {
+            if (argsc > 2) {
+                fprintf(stderr, "cd: too many arguments\n");
+            } else {
+                const char *target = (argsc == 2) ? args[ARG_1] : NULL;
+                change_directory(target);
+            }
             continue;
         }
 
@@ -46,21 +59,38 @@ static void execute_command_line(char *line, char *shell_path) {
             continue;
         }
 
+        if (command_with_pipe(cmd)) {
+            run_pipeline(cmd, shell_path);
+            continue;
+        }
+
+        // Built-in history (only in interactive shell)
+        if (interactive_shell && strcmp(cmd, "history") == 0) {
+            history_print();
+            continue;
+        }
+
         if (command_with_redirection(cmd)) {
             parse_command(cmd, args, &argsc);
-            launch_program_with_redirection(args, argsc);
+            launch_program_with_redirection(args, argsc, -1, -1);
             reap();
         } else {
             parse_command(cmd, args, &argsc);
-            launch_program(args, argsc);
+            launch_program(args, argsc, -1, -1);
             reap();
         }
     }
 }
 
 int main(int argc, char *argv[]) {
-    char shell_path[256];
-    strcpy(shell_path, argv[0]);
+    char shell_path[PATH_MAX];
+    ssize_t path_len = readlink("/proc/self/exe", shell_path, sizeof(shell_path) - 1);
+    if (path_len >= 0) {
+        shell_path[path_len] = '\0';
+    } else {
+        strncpy(shell_path, argv[0], sizeof(shell_path));
+        shell_path[sizeof(shell_path) - 1] = '\0';
+    }
 
     // If this is a subshell: do NOT load or save history
     if (argc >= 3 && strcmp(argv[1], "-c") == 0) {

@@ -15,3 +15,40 @@ git push origin lucca
 history
 echo hi ; (echo inside) ; echo done
 history
+history
+history
+history
+git push origin lucca
+git push origin lucca
+git push origin lucca
+history
+history
+history
+cd ..
+pwd
+(cd ..; pwd)
+(cd ../src; pwd)
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+pwd; \
+echo "[ls output]" > ../tmp/s3_sub_out.txt; \
+ls s3.c history.c >> ../tmp/s3_sub_out.txt; \
+cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; \
+ls does-not-exist 2> ../tmp/s3_sub_err.txt; \
+ls another-missing &> ../tmp/s3_sub_both.txt; \
+cd ..; \
+cat txt/phrases.txt | sort > txt/phrases_sorted.txt
+ps aux | grep python | sort -k 3 -nr | head
+tr a-z A-Z < txt/phrases.txt | grep BURN | sort | wc -l
+tr a-z A-Z < txt/phrases.txt | grep BURN | sort | wc -l
+[A
+[A
+history
+tr a-z A-Z < txt/phrases.txt | grep BURN | sort | wc -l
+( cd src; tr a-z A-Z < txt/phrases.txt ) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
+cd..
+cd ..

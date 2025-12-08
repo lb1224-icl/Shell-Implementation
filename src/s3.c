@@ -1,8 +1,68 @@
 #include "s3.h"
 #include "ctype.h"
+#include <limits.h>
+
+static void apply_pipe_fds(int input_fd, int output_fd);
+
+void quote_state_init(QuoteState *qs) {
+    qs->in_quote = 0;
+    qs->quote_char = '\0';
+}
+
+void quote_state_consume(QuoteState *qs, char c) {
+    if (c == '"' || c == '\'') {
+        if (qs->in_quote && c == qs->quote_char) {
+            qs->in_quote = 0;
+            qs->quote_char = '\0';
+        } else if (!qs->in_quote) {
+            qs->in_quote = 1;
+            qs->quote_char = c;
+        }
+    }
+}
 
 void construct_shell_prompt(char shell_prompt[]) {
-    strcpy(shell_prompt, "[s3]$ ");
+    char cwd[PATH_MAX];
+    static const char *prefix = "[s3 ";
+    static const char *suffix = "]$ ";
+
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        strcpy(cwd, "?");
+    }
+
+    size_t prefix_len = strlen(prefix);
+    size_t suffix_len = strlen(suffix);
+    size_t available = 0;
+    if (MAX_PROMPT_LEN > prefix_len + suffix_len + 1) {
+        available = MAX_PROMPT_LEN - prefix_len - suffix_len - 1; // cwd space + null
+    }
+
+    char cwd_display[MAX_PROMPT_LEN];
+    if (available > 0) {
+        strncpy(cwd_display, cwd, available);
+        cwd_display[available] = '\0';
+    } else {
+        cwd_display[0] = '\0';
+    }
+
+    snprintf(shell_prompt, MAX_PROMPT_LEN, "%s%s%s", prefix, cwd_display, suffix);
+}
+
+int change_directory(const char *path) {
+    const char *target = path;
+
+    if (target == NULL || strlen(target) == 0) {
+        target = getenv("HOME");
+        if (target == NULL)
+            target = "/";
+    }
+
+    if (chdir(target) != 0) {
+        perror("cd");
+        return -1;
+    }
+
+    return 0;
 }
 
 void read_command_line(char line[]) {
@@ -26,22 +86,17 @@ void trim_whitespace(char *str) {
 
     char *src = str;
     char *dst = str;
-    int in_quote = 0;
-    char quote_char = '\0';
+    QuoteState qs;
+    quote_state_init(&qs);
 
     // Skip initial spaces
     while (isspace((unsigned char)*src)) src++;
 
     while (*src) {
         if (*src == '"' || *src == '\'') {
-            if (in_quote && *src == quote_char) {
-                in_quote = 0; // end quote
-            } else if (!in_quote) {
-                in_quote = 1; // start quote
-                quote_char = *src;
-            }
+            quote_state_consume(&qs, *src);
             *dst++ = *src++;
-        } else if (!in_quote && isspace((unsigned char)*src)) {
+        } else if (!qs.in_quote && isspace((unsigned char)*src)) {
             // Collapse multiple spaces to one
             *dst++ = ' ';
             while (isspace((unsigned char)*(++src)));
@@ -58,22 +113,16 @@ void trim_whitespace(char *str) {
 int split_by_semicolon(char line[], char *commands[]) {
     int count = 0;
     int depth = 0;
-    int in_quote = 0;
-    char quote_char = '\0'; // Stores which type of quote we are in
+    QuoteState qs;
+    quote_state_init(&qs);
     char *start = line;
 
     for (char *p = line; ; p++) {
         char c = *p;
 
         if (c == '"' || c == '\'') {
-            if (in_quote && c == quote_char) {
-                in_quote = 0;
-                quote_char = '\0';
-            } else if (!in_quote) {
-                in_quote = 1;
-                quote_char = c;
-            }
-        } else if (!in_quote) {
+            quote_state_consume(&qs, c);
+        } else if (!qs.in_quote) {
             if (c == '(') depth++;
             else if (c == ')') {
                 if (depth > 0) depth--;
@@ -116,9 +165,24 @@ int split_by_semicolon(char line[], char *commands[]) {
 }
 
 int is_subshell(char *cmd){
-    // all checks for depth have been handled already
+    if (cmd == NULL) return 0;
+
+    while (isspace((unsigned char)*cmd)) cmd++;
     if (*cmd != '(') return 0;
-    else return 1;
+
+    size_t len = strlen(cmd);
+    if (len == 0) return 0;
+
+    while (len > 0 && isspace((unsigned char)cmd[len - 1])) {
+        cmd[--len] = '\0';
+    }
+
+    if (len == 0) return 0;
+
+    if (cmd[len - 1] != ')')
+        return 0;
+
+    return 1;
 }
 
 void run_subshell(char *cmd, char *shell_path){
@@ -145,7 +209,45 @@ void parse_command(char line[], char *args[], int *argsc) {
     *argsc = 0;
 
     while (tok && *argsc < MAX_ARGS - 1) {
-        args[(*argsc)++] = tok;
+        char *arg = tok;   // final argument lives in-place inside the original buffer
+        char *write = tok; // where we copy characters after stripping quotes
+        char *read = tok;  // cursor walking over the raw token
+        QuoteState qs;
+        quote_state_init(&qs);
+
+        while (1) {
+            while (*read) {
+                if (*read == '"' || *read == '\'') {
+                    if (qs.in_quote && *read == qs.quote_char) {
+                        quote_state_consume(&qs, *read); // closing quote, omit from output
+                        read++; //increment read so when we copy to write we skip the '"'
+                        continue;
+                    } else if (!qs.in_quote) {
+                        quote_state_consume(&qs, *read); // opening quote, omit from output
+                        read++;
+                        continue;
+                    }
+                }
+
+                *write++ = *read++; // regular character survives untouched
+            }
+
+            if (!qs.in_quote)
+                break;
+
+            *write++ = ' '; // replace the delimiter eaten by strtok when quotes span tokens
+            char *next = strtok(NULL, " ");
+            if (!next) {
+                fprintf(stderr, "s3: unmatched quote\n");
+                *write = '\0';
+                *argsc = 0;
+                return;
+            }
+            read = next;
+        }
+
+        *write = '\0';           // terminate the cleaned argument
+        args[(*argsc)++] = arg;   // store pointer to it (arg points to beginning, write points to end)
         tok = strtok(NULL, " ");
     }
 
@@ -154,6 +256,174 @@ void parse_command(char line[], char *args[], int *argsc) {
 
 bool command_with_redirection(const char *line) {
     return strstr(line, "<") || strstr(line, ">");
+}
+
+bool command_with_pipe(const char *line) {
+    QuoteState qs;
+    quote_state_init(&qs);
+
+    for (const char *p = line; *p; p++) {
+        if (*p == '"' || *p == '\'') {
+            quote_state_consume(&qs, *p);
+        } else if (!qs.in_quote && *p == '|') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int split_by_pipe(char line[], char *commands[]) {
+    int count = 0;
+    QuoteState qs;
+    quote_state_init(&qs);
+    char *start = line;
+
+    for (char *p = line; ; p++) {
+        char c = *p;
+
+        if (c == '"' || c == '\'') {
+            quote_state_consume(&qs, c);
+        }
+
+        if ((!qs.in_quote && c == '|') || c == '\0') {
+            if (p > start) {
+                char *end = p - 1;
+                while (end > start && isspace((unsigned char)*end)) end--;
+                *(end + 1) = '\0';
+                while (start < end && isspace((unsigned char)*start)) start++;
+                if (*start != '\0')
+                    commands[count++] = start;
+            }
+
+            if (c == '\0' || count >= MAX_CMDS)
+                break;
+
+            start = p + 1;
+        }
+
+        if (c == '\0')
+            break;
+    }
+
+    return count;
+}
+
+static void pipeline_subshell_child(const char *inner, const char *shell_path, int input_fd, int output_fd) {
+    apply_pipe_fds(input_fd, output_fd);
+    execlp(shell_path, shell_path, "-c", inner, NULL);
+    perror("subshell exec");
+    _exit(127);
+}
+
+static int launch_pipeline_stage(char *segment, int input_fd, int output_fd, const char *shell_path) {
+    char segment_copy[MAX_LINE]; 
+    strncpy(segment_copy, segment, MAX_LINE);
+    segment_copy[MAX_LINE - 1] = '\0';
+    trim_whitespace(segment_copy);
+
+    if (strlen(segment_copy) == 0) {
+        fprintf(stderr, "s3: invalid null command\n");
+        return -1;
+    }
+
+    if (is_subshell(segment_copy)) {
+        char *inner = segment_copy;
+        while (isspace((unsigned char)*inner)) inner++;
+        inner++;
+
+        size_t len = strlen(inner);
+        while (len > 0 && isspace((unsigned char)inner[len - 1])) {
+            inner[--len] = '\0';
+        }
+        if (len > 0 && inner[len - 1] == ')') {
+            inner[len - 1] = '\0';
+        }
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            perror("fork");
+            return -1;
+        }
+
+        if (pid == 0) {
+            pipeline_subshell_child(inner, shell_path, input_fd, output_fd);
+        }
+        return 0;
+    }
+
+    char *args[MAX_ARGS];
+    int argsc;
+    bool has_redir = command_with_redirection(segment_copy);
+    parse_command(segment_copy, args, &argsc);
+
+    if (argsc == 0) {
+        fprintf(stderr, "s3: invalid null command\n");
+        return -1;
+    }
+
+    if (strcmp(args[ARG_PROGNAME], "cd") == 0) {
+        fprintf(stderr, "s3: cd cannot be used inside a pipeline\n");
+        return -1;
+    }
+
+    if (strcmp(args[ARG_PROGNAME], "history") == 0) {
+        fprintf(stderr, "s3: history cannot be used inside a pipeline\n");
+        return -1;
+    }
+
+    if (has_redir) {
+        launch_program_with_redirection(args, argsc, input_fd, output_fd);
+    } else {
+        launch_program(args, argsc, input_fd, output_fd);
+    }
+
+    return 0;
+}
+
+void run_pipeline(char *cmd, const char *shell_path) {
+    char *segments[MAX_CMDS];
+    int num = split_by_pipe(cmd, segments);
+    if (num <= 0)
+        return;
+
+    int prev_read = -1; // shell stdin
+    int launched = 0;
+
+    for (int i = 0; i < num; i++) {
+        int pipefd[2] = { -1, -1 }; // placeholder for new pipe
+        if (i < num - 1) {
+            if (pipe(pipefd) < 0) {
+                perror("pipe");
+                if (prev_read >= 0) close(prev_read);
+                break;
+            }
+        }
+
+        // pipefd[1] is write end of pipe, pipefd[0] is read end of pipe
+
+        int input_fd = prev_read;
+        int output_fd = (pipefd[1] >= 0) ? pipefd[1] : -1; // pipe changes pipefd values so if pipefd is created then set output to pipefd[1]
+
+        if (launch_pipeline_stage(segments[i], input_fd, output_fd, shell_path) != 0) {
+            if (pipefd[0] >= 0) close(pipefd[0]);
+            if (pipefd[1] >= 0) close(pipefd[1]);
+            if (prev_read >= 0) close(prev_read);
+            break;
+        }
+
+        launched++;
+
+        if (pipefd[1] >= 0) close(pipefd[1]);
+        if (prev_read >= 0) close(prev_read);
+        prev_read = (pipefd[0] >= 0) ? pipefd[0] : -1;
+    }
+
+    if (prev_read >= 0) close(prev_read);
+
+    for (int i = 0; i < launched; i++) {
+        reap();
+    }
 }
 
 static int extract_redirections(char *args[], int argsc,
@@ -316,7 +586,26 @@ void apply_redirections(const Redirections *r, int fds[3]) {
     if (fds[2] >= 0) close(fds[2]);
 }
 
-void child(char *args[], int argsc) {
+static void apply_pipe_fds(int input_fd, int output_fd) {
+    if (input_fd >= 0) {
+        if (dup2(input_fd, STDIN_FILENO) < 0) {
+            perror("dup2 pipe stdin");
+            _exit(1);
+        }
+        close(input_fd);
+    }
+
+    if (output_fd >= 0) {
+        if (dup2(output_fd, STDOUT_FILENO) < 0) {
+            perror("dup2 pipe stdout");
+            _exit(1);
+        }
+        close(output_fd);
+    }
+}
+
+void child(char *args[], int argsc, int input_fd, int output_fd) {
+    apply_pipe_fds(input_fd, output_fd);
     execvp(args[ARG_PROGNAME], args); // change child with requested program
     
     //following only ran if execvp goes wrong
@@ -324,13 +613,14 @@ void child(char *args[], int argsc) {
     _exit(127);
 }
 
-void child_exec_with_redirs(char *args[], int argsc, const Redirections *r) {
+void child_exec_with_redirs(char *args[], int argsc, const Redirections *r, int input_fd, int output_fd) {
     int fds[3];
 
     if (open_redirection_fds(r, fds) < 0) {
         _exit(1);
     }
 
+    apply_pipe_fds(input_fd, output_fd);
     apply_redirections(r, fds);
     execvp(args[ARG_PROGNAME], args);
 
@@ -339,8 +629,16 @@ void child_exec_with_redirs(char *args[], int argsc, const Redirections *r) {
     _exit(127);
 }
 
-void launch_program(char *args[], int argsc) {
+static int exit_allowed(int input_fd, int output_fd) {
+    return (input_fd < 0 && output_fd < 0);
+}
+
+void launch_program(char *args[], int argsc, int input_fd, int output_fd) {
     if (argsc > 0 && strcmp(args[ARG_PROGNAME], "exit") == 0) {
+        if (!exit_allowed(input_fd, output_fd)) {
+            fprintf(stderr, "s3: exit cannot be used in a pipeline\n");
+            return;
+        }
         int status = 0;
 
         if (argsc > 1) {
@@ -359,11 +657,11 @@ void launch_program(char *args[], int argsc) {
     }
 
     if (rc == 0) {
-        child(args, argsc);
+        child(args, argsc, input_fd, output_fd);
     }
 }
 
-void launch_program_with_redirection(char *args[], int argsc) {
+void launch_program_with_redirection(char *args[], int argsc, int input_fd, int output_fd) {
     Redirections r;
     char *exec_args[MAX_ARGS];
     int exec_argc;
@@ -377,6 +675,10 @@ void launch_program_with_redirection(char *args[], int argsc) {
     }
 
     if (exec_argc > 0 && strcmp(exec_args[ARG_PROGNAME], "exit") == 0) {
+        if (!exit_allowed(input_fd, output_fd)) {
+            fprintf(stderr, "s3: exit cannot be used in a pipeline\n");
+            return;
+        }
         int status = 0;
 
         if (exec_argc > 1) {
@@ -395,6 +697,6 @@ void launch_program_with_redirection(char *args[], int argsc) {
     }
 
     if (rc == 0) {
-        child_exec_with_redirs(exec_args, exec_argc, &r); // change exec of child
+        child_exec_with_redirs(exec_args, exec_argc, &r, input_fd, output_fd); // change exec of child
     }
 }

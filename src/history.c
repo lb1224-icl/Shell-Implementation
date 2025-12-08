@@ -50,17 +50,26 @@ void history_print() {
     }
 }
 
-/*
- * Expand ! commands:
- *  - !number
- *  - !prefix
- * Return 1 if expansion happened, 0 otherwise.
- */
 int history_expand(char *input, char *expanded) {
     if (input[0] != '!')
         return 0;
 
-    // Case 1: !number
+    // Single '!' should not trigger expansion
+    if (input[1] == '\0') {
+        return 0;
+    }
+
+    // Case 1: !! (repeat most recent)
+    if (input[1] == '!' && input[2] == '\0') {
+        if (history_len == 0) {
+            printf("No commands in history.\n");
+            return -1;
+        }
+        strcpy(expanded, history[history_len - 1]);
+        return 1;
+    }
+
+    // Case 2: !number
     if (isdigit(input[1])) {
         int idx = atoi(input + 1) - 1;
         if (idx >= 0 && idx < history_len) {
@@ -72,7 +81,7 @@ int history_expand(char *input, char *expanded) {
         }
     }
 
-    // Case 2: !prefix
+    // Case 3: !prefix
     char *prefix = input + 1;
     int prefix_len = strlen(prefix);
 

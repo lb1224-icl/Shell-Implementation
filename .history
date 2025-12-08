@@ -1,0 +1,53 @@
+pwd
+(cd /tmp; pwd)
+(cd /src: pwd)
+(cd src; pwd)
+cd src
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > /tmp/s3_sub_out.txt; ls s3.c history.c >> /tmp/s3_sub_out.txt; cat < txt/phrases.txt > /tmp/s3_phrases_copy.txt; ls does-not-exist 2> /tmp/s3_sub_err.txt; ls another-missing &> /tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; \
+pwd; \
+cd src; \
+pwd; \
+echo "== done ==" )
+( echo "== subshell test =="; \ pwd; \ cd src; \ pwd; \ echo "[ls output]" > ../tmp/s3_sub_out.txt; \ ls s3.c history.c >> ../tmp/s3_sub_out.txt; \ cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; \ ls does-not-exist 2> ../tmp/s3_sub_err.txt; \ ls another-missing &> ../tmp/s3_sub_both.txt; \ cd ..; \ pwd; \ echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > ../tmp/s3_sub_out.txt; ls s3.c history.c >> ../tmp/s3_sub_out.txt; cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; ls does-not-exist 2> ../tmp/s3_sub_err.txt; ls another-missing &> ../tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > ../tmp/s3_sub_out.txt; ls s3.c history.c >> ../tmp/s3_sub_out.txt; cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; ls does-not-exist 2> ../tmp/s3_sub_err.txt; ls another-missing &> ../tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > ../tmp/s3_sub_out.txt; ls s3.c history.c >> ../tmp/s3_sub_out.txt; cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; ls does-not-exist 2> ../tmp/s3_sub_err.txt; ls another-missing &> ../tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+echo "hello world"
+( echo "== subshell test =="; pwd; cd src; pwd; echo "[ls output]" > ../tmp/s3_sub_out.txt; ls s3.c history.c >> ../tmp/s3_sub_out.txt; cat < txt/phrases.txt > ../tmp/s3_phrases_copy.txt; ls does-not-exist 2> ../tmp/s3_sub_err.txt; ls another-missing &> ../tmp/s3_sub_both.txt; cd ..; pwd; echo "== done ==" )
+printf "foo
+bar
+" | grep foo
+ls | head
+exit
+cat src/txt/phrases.txt | head -n 2 > tmp/test_pipe.txt
+exit
+cd src
+( cd src; tr a-z A-Z < txt/phrases.txt ) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
+( cd src; pwd)
+( cd src; tr a-z A-Z < txt/phrases.txt )
+( cd src; tr a-z A-Z < txt/phrases.txt ) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
+cat src/txt/phrases.txt | tr a-z A-Z | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
+( cd /home/lucca/Documents/Shell-Implementation/src; tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5 )
+( cd /home/lucca/Documents/Shell-Implementation/src && tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5 )
+( cd /home/lucca/Documents/Shell-Implementation/src && tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5 )
+(cd src && tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5 )
+(cd src && tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5)
+exit
+(cd src)
+pwd
+exit
+(cd src; tr a-z A-Z < txt/phrases.txt | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5)
+exit
+(echo hi)
+exit
+(echo hi )
+exit
+(cd src; tr a-z A-Z < txt/phrases.txt) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
+exit
+(echo hi)
+exit
+(cd src; tr a-z A-Z < txt/phrases.txt) | grep BURN | sort | uniq -c | sort -k1,1nr | head -n 5
